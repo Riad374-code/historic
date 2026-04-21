@@ -18,6 +18,7 @@ pub async fn fetch_html(url: String) -> Result<String, String> {
     Ok(body)
 }
 
+//r.jina.ai is used for markdown but fallback is applied for any case
 pub async fn fetch_markdown_from_reader(url: String) -> Result<String, String> {
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
