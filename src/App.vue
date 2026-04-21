@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { fetchMarkdownFromUrl } from "./lib/fetchHtml";
+import { choosePdfSaveDirectory, fetchMarkdownFromUrl, savePdf } from "./lib/fetchHtml";
 
 const link = ref("https://gemini.google.com/share/9fa1c26949c2");
 const readability = ref<"human" | "ai">("human");
 const format = ref<"pdf" | "json">("pdf");
+const pdfFileName = ref("historic-export.pdf");
 const markdownOutput = ref("");
 const markdownSource = ref("");
 const usedFallback = ref(false);
 const errorMessage = ref("");
+const successMessage = ref("");
 const isFetching = ref(false);
+const isSavingPdf = ref(false);
 
 function enrichMarkdown(markdown: string, sourceUrl: string): string {
   let output = markdown.trim();
@@ -36,6 +39,7 @@ function enrichMarkdown(markdown: string, sourceUrl: string): string {
 
 async function onSubmit() {
   errorMessage.value = "";
+  successMessage.value = "";
   markdownOutput.value = "";
   markdownSource.value = "";
   usedFallback.value = false;
@@ -52,6 +56,37 @@ async function onSubmit() {
       error instanceof Error ? error.message : "Failed to fetch markdown content.";
   } finally {
     isFetching.value = false;
+  }
+}
+
+async function onSavePdf() {
+  if (!markdownOutput.value || isSavingPdf.value) {
+    return;
+  }
+
+  errorMessage.value = "";
+  successMessage.value = "";
+  isSavingPdf.value = true;
+
+  try {
+    const directory = await choosePdfSaveDirectory();
+    if (!directory) {
+      return;
+    }
+
+    const fileName = (pdfFileName.value.trim() || "historic-export.pdf").endsWith(".pdf")
+      ? (pdfFileName.value.trim() || "historic-export.pdf")
+      : `${pdfFileName.value.trim() || "historic-export"}.pdf`;
+
+    const cleanDirectory = directory.replace(/[\\/]+$/, "");
+    const outputPath = `${cleanDirectory}/${fileName}`;
+
+    const savedPath = await savePdf(markdownOutput.value, outputPath);
+    successMessage.value = `PDF saved: ${savedPath}`;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : "Failed to save PDF.";
+  } finally {
+    isSavingPdf.value = false;
   }
 }
 </script>
@@ -100,19 +135,36 @@ async function onSubmit() {
           </div>
         </fieldset>
 
+        <div v-if="format === 'pdf'" class="pdf-name-wrap">
+          <label for="pdf-name">PDF file name</label>
+          <input id="pdf-name" v-model="pdfFileName" type="text" placeholder="historic-export.pdf" />
+        </div>
+
         <button type="submit" :disabled="isFetching">
           {{ isFetching ? "Fetching..." : "Get data" }}
         </button>
       </form>
 
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+      <p v-if="successMessage" class="success">{{ successMessage }}</p>
 
       <section v-if="markdownOutput" class="result">
         <div class="result-head">
           <h2>Markdown Output</h2>
-          <div class="meta-row">
+          <div class="actions-row">
+            <button
+              v-if="format === 'pdf'"
+              class="save-btn"
+              type="button"
+              :disabled="isSavingPdf"
+              @click="onSavePdf"
+            >
+              {{ isSavingPdf ? "Saving PDF..." : "Save as PDF" }}
+            </button>
+            <div class="meta-row">
             <span class="chip">Source: {{ markdownSource || "unknown" }}</span>
             <span v-if="usedFallback" class="chip chip-fallback">Fallback used</span>
+            </div>
           </div>
         </div>
         <pre>{{ markdownOutput }}</pre>
@@ -187,7 +239,23 @@ input[type="url"] {
   font: 500 0.95rem/1.2 "Trebuchet MS", "Gill Sans", sans-serif;
 }
 
+input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: #fff;
+  font: 500 0.92rem/1.2 "Trebuchet MS", "Gill Sans", sans-serif;
+}
+
 input[type="url"]:focus {
+  outline: 2px solid #e8aa72;
+  border-color: #e8aa72;
+}
+
+input[type="text"]:focus {
   outline: 2px solid #e8aa72;
   border-color: #e8aa72;
 }
@@ -256,6 +324,12 @@ button:disabled {
   font: 600 0.9rem/1.3 "Trebuchet MS", "Gill Sans", sans-serif;
 }
 
+.success {
+  margin: 14px 0 0;
+  color: #2f6d2d;
+  font: 600 0.9rem/1.3 "Trebuchet MS", "Gill Sans", sans-serif;
+}
+
 .result {
   margin-top: 16px;
   border: 1px solid var(--line);
@@ -272,6 +346,25 @@ button:disabled {
   gap: 10px;
   margin-bottom: 10px;
   flex-wrap: wrap;
+}
+
+.actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pdf-name-wrap {
+  display: grid;
+  gap: 6px;
+}
+
+.save-btn {
+  margin-top: 0;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font: 700 0.78rem/1 "Trebuchet MS", "Gill Sans", sans-serif;
 }
 
 .result h2 {

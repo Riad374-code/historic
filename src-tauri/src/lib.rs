@@ -1,7 +1,9 @@
 mod fetcher;
+mod file_design;
 mod html_parser;
 
 use fetcher::{fetch_html, fetch_markdown_from_reader};
+use file_design::markdown2pdf;
 use html_parser::html2markdown;
 use serde::Serialize;
 
@@ -46,25 +48,6 @@ fn polish_markdown(mut markdown: String, source_url: &str) -> String {
 
     markdown
 }
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-async fn fetcher(url: String) -> Result<String, String> {
-    let body = fetch_html(url).await?;
-    Ok(body)
-}
-
-#[tauri::command]
-async fn html_to_markdown(body: String) -> Result<String, String> {
-    let markdown = html2markdown(body)?;
-
-    Ok(markdown)
-}
-
 #[tauri::command]
 async fn fetch_markdown(url: String) -> Result<MarkdownResult, String> {
     let clean_url = url.trim().to_string();
@@ -117,16 +100,57 @@ async fn fetch_markdown(url: String) -> Result<MarkdownResult, String> {
     }
 }
 
+#[tauri::command]
+async fn create_pdf(markdown: String, output_path: String) -> Result<String, String> {
+    eprintln!(
+        "=== MARKDOWN RECEIVED BY create_pdf ===\n{}\n=== END ===",
+        markdown
+    );
+
+    let selected_path = std::path::PathBuf::from(output_path);
+    if let Some(parent) = selected_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to prepare output directory: {e}"))?;
+    }
+
+    match markdown2pdf(markdown.clone(), selected_path.clone()) {
+        Ok(written_path) => Ok(written_path.to_string_lossy().to_string()),
+        Err(primary_error) => {
+            let fallback_path = std::env::var("USERPROFILE")
+                .ok()
+                .map(std::path::PathBuf::from)
+                .and_then(|base| {
+                    selected_path
+                        .file_name()
+                        .map(|name| base.join("Downloads").join(name))
+                });
+
+            if let Some(path) = fallback_path {
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent)
+                        .map_err(|e| format!("Failed to prepare fallback directory: {e}"))?;
+                }
+
+                let fallback_written = markdown2pdf(markdown, path).map_err(|fallback_error| {
+                    format!(
+                        "Failed to save in selected folder ({primary_error}) and fallback folder ({fallback_error})"
+                    )
+                })?;
+
+                Ok(fallback_written.to_string_lossy().to_string())
+            } else {
+                Err(primary_error)
+            }
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            greet,
-            fetcher,
-            html_to_markdown,
-            fetch_markdown
-        ])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![fetch_markdown, create_pdf])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
