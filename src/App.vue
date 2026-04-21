@@ -6,6 +6,8 @@ const link = ref("https://gemini.google.com/share/9fa1c26949c2");
 const readability = ref<"human" | "ai">("human");
 const format = ref<"pdf" | "json">("pdf");
 const markdownOutput = ref("");
+const markdownSource = ref("");
+const usedFallback = ref(false);
 const errorMessage = ref("");
 const isFetching = ref(false);
 
@@ -35,12 +37,16 @@ function enrichMarkdown(markdown: string, sourceUrl: string): string {
 async function onSubmit() {
   errorMessage.value = "";
   markdownOutput.value = "";
+  markdownSource.value = "";
+  usedFallback.value = false;
   isFetching.value = true;
 
   try {
     const sourceUrl = link.value.trim();
-    const markdown = await fetchMarkdownFromUrl(sourceUrl);
-    markdownOutput.value = enrichMarkdown(markdown, sourceUrl);
+    const result = await fetchMarkdownFromUrl(sourceUrl);
+    markdownOutput.value = enrichMarkdown(result.markdown, sourceUrl);
+    markdownSource.value = result.source;
+    usedFallback.value = result.usedFallback;
   } catch (error) {
     errorMessage.value =
       error instanceof Error ? error.message : "Failed to fetch markdown content.";
@@ -102,7 +108,13 @@ async function onSubmit() {
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
       <section v-if="markdownOutput" class="result">
-        <h2>Markdown Output</h2>
+        <div class="result-head">
+          <h2>Markdown Output</h2>
+          <div class="meta-row">
+            <span class="chip">Source: {{ markdownSource || "unknown" }}</span>
+            <span v-if="usedFallback" class="chip chip-fallback">Fallback used</span>
+          </div>
+        </div>
         <pre>{{ markdownOutput }}</pre>
       </section>
     </main>
@@ -248,24 +260,59 @@ button:disabled {
   margin-top: 16px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 12px;
-  background: #fff;
+  padding: 14px;
+  background: linear-gradient(180deg, #fffdfa 0%, #fff7ee 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .result h2 {
-  margin: 0 0 8px;
+  margin: 0;
   color: var(--text);
   font: 700 0.98rem/1.2 "Trebuchet MS", "Gill Sans", sans-serif;
 }
 
+.meta-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border: 1px solid #edc89b;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #fff;
+  color: #7b522c;
+  font: 600 0.72rem/1 "Trebuchet MS", "Gill Sans", sans-serif;
+}
+
+.chip-fallback {
+  border-color: #e09b6c;
+  color: #8f3b0e;
+  background: #fff0e3;
+}
+
 .result pre {
   margin: 0;
-  max-height: 220px;
+  max-height: 340px;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
   color: #4d3a27;
   font: 500 0.78rem/1.35 Consolas, "Courier New", monospace;
+  border: 1px solid #f0d7b8;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
 }
 
 @keyframes rise {

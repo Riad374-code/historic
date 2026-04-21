@@ -4,14 +4,13 @@ pub fn html2markdown(body: String) -> Result<String, String> {
     let options = ConversionOptions::builder()
         .heading_style(HeadingStyle::Atx)
         .link_style(LinkStyle::Reference)
-        .wrap(true)
+        .wrap(false)
         .wrap_width(100)
         .build();
-    let result = convert(&body.as_str(), Some(options)).map_err(|e| e.to_string())?;
+    let result = convert(&body, Some(options)).map_err(|e| e.to_string())?;
 
-    if !result.content.is_some() || !result.warnings.is_empty() {
-        return Err(format!("Could not get markdown from html"));
+    match result.content {
+        Some(content) if !content.trim().is_empty() => Ok(content),
+        _ => Err("Could not get markdown from html".to_string()),
     }
-
-    Ok(result.content.unwrap())
 }
