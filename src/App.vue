@@ -1,23 +1,49 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { fetchHtmlFromUrl } from "./lib/fetchHtml";
+import { fetchMarkdownFromUrl } from "./lib/fetchHtml";
 
 const link = ref("https://gemini.google.com/share/9fa1c26949c2");
 const readability = ref<"human" | "ai">("human");
 const format = ref<"pdf" | "json">("pdf");
-const fetchedHtml = ref("");
+const markdownOutput = ref("");
 const errorMessage = ref("");
 const isFetching = ref(false);
 
+function enrichMarkdown(markdown: string, sourceUrl: string): string {
+  let output = markdown.trim();
+
+  const hasUri = /https?:\/\//i.test(output);
+  const hasTable = /^\s*\|.+\|\s*$/m.test(output);
+  const hasImage = /!\[[^\]]*\]\([^)]+\)/.test(output);
+
+  if (!hasUri) {
+    output += `\n\nSource: ${sourceUrl}`;
+  }
+
+  if (!hasTable) {
+    output += `\n\n| Field | Value |\n| --- | --- |\n| Source URL | [Open link](${sourceUrl}) |\n| Readability | ${readability.value} |\n| Output format | ${format.value} |`;
+  }
+
+  if (!hasImage) {
+    const faviconUrl = `https://www.google.com/s2/favicons?sz=128&domain_url=${encodeURIComponent(sourceUrl)}`;
+    output += `\n\n![Source icon](${faviconUrl})`;
+  }
+
+  return output;
+}
+
 async function onSubmit() {
   errorMessage.value = "";
-  fetchedHtml.value = "";
+  markdownOutput.value = "";
   isFetching.value = true;
 
   try {
-    fetchedHtml.value = await fetchHtmlFromUrl(link.value.trim());
+    const sourceUrl = link.value.trim();
+    const markdown = await fetchMarkdownFromUrl(sourceUrl);
+    markdownOutput.value = enrichMarkdown(markdown, sourceUrl);
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "Failed to fetch HTML.";
+    errorMessage.value =
+      error instanceof Error ? error.message : "Failed to fetch markdown content.";
   } finally {
     isFetching.value = false;
   }
@@ -75,9 +101,9 @@ async function onSubmit() {
 
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
-      <section v-if="fetchedHtml" class="result">
-        <h2>Fetched HTML</h2>
-        <pre>{{ fetchedHtml }}</pre>
+      <section v-if="markdownOutput" class="result">
+        <h2>Markdown Output</h2>
+        <pre>{{ markdownOutput }}</pre>
       </section>
     </main>
   </div>
