@@ -1,7 +1,9 @@
 {
   "name": "historic",
   "private": true,
+  "description": "Historic desktop app for extracting link content and exporting readable results.",
   "version": "0.1.1",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

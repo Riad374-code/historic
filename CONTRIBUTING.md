@@ -13,7 +13,7 @@ Thanks for contributing to Historic.
 ### Install
 1. Clone the repository.
 2. Install frontend dependencies:
-   - npm install
+   - npm ci
 3. Build/check Rust dependencies when needed:
    - cd src-tauri
    - cargo check
@@ -29,6 +29,14 @@ Thanks for contributing to Historic.
 ## Build
 - npm run build
 - cd src-tauri && cargo check
+
+## Release Notes for Maintainers
+- Publishing is tag-driven via [.github/workflows/publish.yml](.github/workflows/publish.yml).
+- Create and push a semantic tag like `v0.1.1` to start a draft release build.
+- Keep versions aligned in:
+   - [package.json](package.json)
+   - [src-tauri/tauri.conf.json](src-tauri/tauri.conf.json)
+   - [src-tauri/Cargo.toml](src-tauri/Cargo.toml)
 
 ## Pull Request Guidelines
 1. Create a focused branch per change.

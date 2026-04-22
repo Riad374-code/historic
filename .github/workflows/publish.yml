@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     permissions:
@@ -22,10 +26,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: npm
 
-      - name: verify tag matches app version
+      - name: verify tag and versions are consistent
         run: |
-          node -e "const ref = process.env.GITHUB_REF_NAME || ''; const tag = ref.startsWith('v') ? ref.slice(1) : ref; const pkg = require('./package.json'); if (tag !== pkg.version) { console.error('Tag version ' + tag + ' does not match package.json version ' + pkg.version); process.exit(1); } console.log('Tag ' + ref + ' matches package.json version ' + pkg.version);"
+          node -e "const fs = require('fs'); const ref = process.env.GITHUB_REF_NAME || ''; if (!/^v\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$/.test(ref)) { console.error('Tag must look like vX.Y.Z, got: ' + ref); process.exit(1); } const tag = ref.slice(1); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')); const cargoToml = fs.readFileSync('src-tauri/Cargo.toml', 'utf8'); const cargoMatch = cargoToml.match(/^version\s*=\s*\"([^\"]+)\"/m); if (!cargoMatch) { console.error('Could not read version from src-tauri/Cargo.toml'); process.exit(1); } const cargoVersion = cargoMatch[1]; const versions = [pkg.version, tauri.version, cargoVersion]; if (!versions.every((v) => v === pkg.version)) { console.error('Version mismatch across files: package.json=' + pkg.version + ', tauri.conf.json=' + tauri.version + ', Cargo.toml=' + cargoVersion); process.exit(1); } if (tag !== pkg.version) { console.error('Tag version ' + tag + ' does not match app version ' + pkg.version); process.exit(1); } console.log('Tag and all app versions are consistent: ' + pkg.version);"
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -37,7 +42,7 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: install frontend dependencies
-        run: npm install
+        run: npm ci
 
       - uses: tauri-apps/tauri-action@v0
         env:

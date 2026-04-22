@@ -2,6 +2,7 @@
 name = "historic"
 version = "0.1.1"
 description = "A Tauri App"
+license = "MIT"
 authors = ["you"]
 edition = "2021"
 
