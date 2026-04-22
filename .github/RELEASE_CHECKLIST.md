@@ -34,11 +34,12 @@ If publishing to public users, set signing secrets as documented in:
 
 ## 5. Publish trigger
 
-Create and push tag matching the app version:
+Commit and push to main:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git add .
+git commit -m "chore: prepare release workflow"
+git push origin main
 ```
 
 ## 6. Review draft release

@@ -49,11 +49,10 @@ This repository uses a GitHub Actions workflow at [.github/workflows/publish.yml
 
 ### Trigger rule
 
-Releases are built only when you push a version tag matching `v*`, for example:
+Releases are built when changes are pushed to `main`:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git push origin main
 ```
 
 ### Safety checks in CI

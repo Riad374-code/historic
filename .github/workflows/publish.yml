@@ -2,8 +2,8 @@ name: publish
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -28,9 +28,9 @@ jobs:
           node-version: lts/*
           cache: npm
 
-      - name: verify tag and versions are consistent
+      - name: verify app versions are consistent
         run: |
-          node -e "const fs = require('fs'); const ref = process.env.GITHUB_REF_NAME || ''; if (!/^v\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$/.test(ref)) { console.error('Tag must look like vX.Y.Z, got: ' + ref); process.exit(1); } const tag = ref.slice(1); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')); const cargoToml = fs.readFileSync('src-tauri/Cargo.toml', 'utf8'); const cargoMatch = cargoToml.match(/^version\s*=\s*\"([^\"]+)\"/m); if (!cargoMatch) { console.error('Could not read version from src-tauri/Cargo.toml'); process.exit(1); } const cargoVersion = cargoMatch[1]; const versions = [pkg.version, tauri.version, cargoVersion]; if (!versions.every((v) => v === pkg.version)) { console.error('Version mismatch across files: package.json=' + pkg.version + ', tauri.conf.json=' + tauri.version + ', Cargo.toml=' + cargoVersion); process.exit(1); } if (tag !== pkg.version) { console.error('Tag version ' + tag + ' does not match app version ' + pkg.version); process.exit(1); } console.log('Tag and all app versions are consistent: ' + pkg.version);"
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')); const cargoToml = fs.readFileSync('src-tauri/Cargo.toml', 'utf8'); const cargoMatch = cargoToml.match(/^version\s*=\s*\"([^\"]+)\"/m); if (!cargoMatch) { console.error('Could not read version from src-tauri/Cargo.toml'); process.exit(1); } const cargoVersion = cargoMatch[1]; const versions = [pkg.version, tauri.version, cargoVersion]; if (!versions.every((v) => v === pkg.version)) { console.error('Version mismatch across files: package.json=' + pkg.version + ', tauri.conf.json=' + tauri.version + ', Cargo.toml=' + cargoVersion); process.exit(1); } if (!/^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$/.test(pkg.version)) { console.error('package.json version is not semver-like: ' + pkg.version); process.exit(1); } console.log('All app versions are consistent: ' + pkg.version);"
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -47,21 +47,15 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Optional updater signature secrets:
+          APPLE_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          NSIS_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          NSIS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          # Optional updater signature secrets if updater is enabled:
           # TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           # TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          # Optional macOS signing/notarization secrets:
-          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # APPLE_ID: ${{ secrets.APPLE_ID }}
-          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Optional Windows signing secrets:
-          # WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          # WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: App ${{ github.ref_name }}
+          tagName: app-v__VERSION__
+          releaseName: App v__VERSION__
           releaseBody: See the assets to download this version.
           releaseDraft: true
