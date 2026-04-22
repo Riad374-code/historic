@@ -94,8 +94,13 @@ async function onSavePdf() {
 <template>
   <div class="page">
     <main class="card">
-      <p class="eyebrow">Historic</p>
-      <h1>Extract clean data from a link</h1>
+      <div class="hero-head">
+        <img class="brand-mark" src="/historic-favicon.svg" alt="Historic icon" />
+        <div>
+          <p class="eyebrow">Historic</p>
+          <h1>Extract clean data from a link</h1>
+        </div>
+      </div>
 
       <form class="extract-form" @submit.prevent="onSubmit">
         <label for="link">Paste Link</label>
@@ -203,6 +208,21 @@ async function onSavePdf() {
   animation: rise 0.45s ease-out;
 }
 
+.hero-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.brand-mark {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(141, 71, 14, 0.2);
+}
+
 .eyebrow {
   margin: 0;
   color: var(--accent);
@@ -212,7 +232,7 @@ async function onSavePdf() {
 }
 
 h1 {
-  margin: 10px 0 22px;
+  margin: 8px 0 0;
   color: var(--text);
   font: 700 clamp(1.55rem, 2.4vw, 2rem) / 1.2 "Palatino Linotype", "Book Antiqua", Palatino, serif;
 }
@@ -431,6 +451,18 @@ button:disabled {
 
   .option-row {
     grid-template-columns: 1fr;
+  }
+
+  .hero-head {
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
   }
 }
 </style>

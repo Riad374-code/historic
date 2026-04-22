@@ -72,7 +72,9 @@ fn normalise_line(line: &str) -> String {
     // In normalise_line, change bullet output from `*` to `-`:
     // Guard: next byte must be whitespace so `**bold**` is not treated as a bullet
     let is_bullet_marker = (t.starts_with('*') || t.starts_with('-') || t.starts_with('+'))
-        && t.as_bytes().get(1).map_or(false, |b| b.is_ascii_whitespace());
+        && t.as_bytes()
+            .get(1)
+            .map_or(false, |b| b.is_ascii_whitespace());
     if is_bullet_marker {
         let after = t[1..].trim_start();
         if !after.is_empty() {
