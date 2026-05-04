@@ -1875,9 +1875,9 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "glyphweaveforge"
-version = "0.1.4"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f69a55d0f293da3a02bbd512641ccbf978fb4960000624377aaa53d7a1ba62ba"
+checksum = "e5d7291e48291a2e52b9b91d69574b5333ce2c325c7259187a734fcc5f8e25c7"
 dependencies = [
  "pulldown-cmark",
  "serde",
