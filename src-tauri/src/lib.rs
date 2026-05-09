@@ -100,12 +100,77 @@ async fn fetch_markdown(url: String) -> Result<MarkdownResult, String> {
     }
 }
 
+/// Downloads all remote images in `markdown` to temp files and replaces their
+/// URLs with absolute local paths so the PDF renderer can read them reliably.
+/// Returns the rewritten markdown and the temp paths to clean up afterwards.
+async fn localise_images(markdown: &str) -> (String, Vec<std::path::PathBuf>) {
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return (markdown.to_string(), vec![]),
+    };
+
+    let mut output = String::with_capacity(markdown.len());
+    let mut temp_files: Vec<std::path::PathBuf> = Vec::new();
+    let mut pos = 0;
+
+    while pos < markdown.len() {
+        if markdown[pos..].starts_with("![") {
+            let after_bang = pos + 2;
+            if let Some(rel_bracket) = markdown[after_bang..].find("](") {
+                let alt_end = after_bang + rel_bracket;
+                let url_start = alt_end + 2;
+                if let Some(rel_paren) = markdown[url_start..].find(')') {
+                    let url = &markdown[url_start..url_start + rel_paren];
+                    let end = url_start + rel_paren + 1;
+
+                    if url.starts_with("http://") || url.starts_with("https://") {
+                        if let Ok(resp) = client.get(url).send().await {
+                            if let Ok(bytes) = resp.bytes().await {
+                                let ext = url
+                                    .split('?')
+                                    .next()
+                                    .unwrap_or(url)
+                                    .rsplit('.')
+                                    .next()
+                                    .filter(|e| {
+                                        e.len() <= 5 && e.chars().all(|c| c.is_alphanumeric())
+                                    })
+                                    .unwrap_or("png");
+                                let tmp = std::env::temp_dir()
+                                    .join(format!("historic_img_{}.{}", temp_files.len(), ext));
+                                if std::fs::write(&tmp, &bytes).is_ok() {
+                                    let path_str = tmp.to_string_lossy().replace('\\', "/");
+                                    let alt = &markdown[after_bang..alt_end];
+                                    output.push_str(&format!("![{}]({})", alt, path_str));
+                                    temp_files.push(tmp);
+                                    pos = end;
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+
+                    output.push_str(&markdown[pos..end]);
+                    pos = end;
+                    continue;
+                }
+            }
+        }
+
+        let ch_len = markdown[pos..].chars().next().map(|c| c.len_utf8()).unwrap_or(1);
+        output.push_str(&markdown[pos..pos + ch_len]);
+        pos += ch_len;
+    }
+
+    (output, temp_files)
+}
+
 #[tauri::command]
 async fn create_pdf(markdown: String, output_path: String) -> Result<String, String> {
-    eprintln!(
-        "=== MARKDOWN RECEIVED BY create_pdf ===\n{}\n=== END ===",
-        markdown
-    );
+    let (localised, temp_files) = localise_images(&markdown).await;
 
     let selected_path = std::path::PathBuf::from(output_path);
     if let Some(parent) = selected_path.parent() {
@@ -113,7 +178,7 @@ async fn create_pdf(markdown: String, output_path: String) -> Result<String, Str
             .map_err(|e| format!("Failed to prepare output directory: {e}"))?;
     }
 
-    match markdown2pdf(markdown.clone(), selected_path.clone()) {
+    let result = match markdown2pdf(localised.clone(), selected_path.clone()) {
         Ok(written_path) => Ok(written_path.to_string_lossy().to_string()),
         Err(primary_error) => {
             let fallback_path = std::env::var("USERPROFILE")
@@ -131,18 +196,25 @@ async fn create_pdf(markdown: String, output_path: String) -> Result<String, Str
                         .map_err(|e| format!("Failed to prepare fallback directory: {e}"))?;
                 }
 
-                let fallback_written = markdown2pdf(markdown, path).map_err(|fallback_error| {
-                    format!(
+                let fallback_written =
+                    markdown2pdf(localised, path).map_err(|fallback_error| {
+                        format!(
                         "Failed to save in selected folder ({primary_error}) and fallback folder ({fallback_error})"
                     )
-                })?;
+                    })?;
 
                 Ok(fallback_written.to_string_lossy().to_string())
             } else {
                 Err(primary_error)
             }
         }
+    };
+
+    for p in &temp_files {
+        let _ = std::fs::remove_file(p);
     }
+
+    result
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
