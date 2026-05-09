@@ -1,6 +1,6 @@
 # Historic
 
-Historic is a Tauri desktop application (Vue + TypeScript + Rust) for extracting clean content from a URL and exporting results.
+Historic is a Tauri desktop application (Vue + TypeScript + Rust) for extracting clean content from a URL and exporting results as PDF format.
 
 ## Features
 
