@@ -24,7 +24,7 @@ tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-html-to-markdown-rs = "3.2.6"
+html-to-markdown-rs = "3.4.0"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-http = "2.5.8"
 glyphweaveforge = { version = "0.1.4", features = ["renderer-typst"] }
