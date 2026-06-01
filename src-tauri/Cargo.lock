@@ -1875,14 +1875,15 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "glyphweaveforge"
-version = "0.1.4"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f69a55d0f293da3a02bbd512641ccbf978fb4960000624377aaa53d7a1ba62ba"
+checksum = "cab3ea4c91f991076addf3e18e39c223620472e19e0f5732f72c8d104519ed40"
 dependencies = [
  "pulldown-cmark",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+ "ttf-parser",
  "typst",
  "typst-as-lib",
  "typst-pdf",
