@@ -26,6 +26,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 html-to-markdown-rs = "3.2.6"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
-tauri-plugin-http = "2.5.8"
+tauri-plugin-http = "2.5.9"
 glyphweaveforge = { version = "0.1.4", features = ["renderer-typst"] }
 
